@@ -5,7 +5,8 @@ from sklearn.metrics import mean_squared_error
 import xgboost as xgb
 
 def load_data(path):
-    df = pd.read_csv(path, parse_dates=["Date"])
+    df = pd.read_csv(path)
+    df["Date"] = pd.to_datetime(df["Date"], format="%m/%d/%Y")
     df["Day"] = df["Date"].dt.day
     df["Month"] = df["Date"].dt.month
     df["Year"] = df["Date"].dt.year

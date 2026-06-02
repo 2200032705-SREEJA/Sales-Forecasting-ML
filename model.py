@@ -15,11 +15,11 @@ def load_data(path):
     return df
 
 @st.cache_resource
-def train_model(df):
+def train_model(_df):          # ← underscore prefix tells Streamlit: don't hash this arg
     models = {}
     features = ["Day", "Month", "Year", "DayOfWeek", "WeekOfYear"]
-    for product in df["Product line"].unique():
-        pdf = df[df["Product line"] == product].copy()
+    for product in _df["Product line"].unique():
+        pdf = _df[_df["Product line"] == product].copy()
         daily = pdf.groupby(["Date", "Day", "Month", "Year", "DayOfWeek", "WeekOfYear"])["Sales"].sum().reset_index()
         X = daily[features]
         y = daily["Sales"]

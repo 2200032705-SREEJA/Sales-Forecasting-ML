@@ -1,8 +1,7 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+import numpy as np
 import xgboost as xgb
+from sklearn.model_selection import train_test_split
 
 def load_data(path):
     df = pd.read_csv(path)
@@ -10,24 +9,34 @@ def load_data(path):
     df["Day"] = df["Date"].dt.day
     df["Month"] = df["Date"].dt.month
     df["Year"] = df["Date"].dt.year
+    df["DayOfWeek"] = df["Date"].dt.dayofweek
+    df["WeekOfYear"] = df["Date"].dt.isocalendar().week.astype(int)
     return df
 
 def train_model(df):
-    X = df[["Day", "Month", "Year"]]
-    y = df["Sales"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = xgb.XGBRegressor()
-    model.fit(X_train, y_train)
-    return model, X_test, y_test
+    models = {}
+    features = ["Day", "Month", "Year", "DayOfWeek", "WeekOfYear"]
+    for product in df["Product line"].unique():
+        pdf = df[df["Product line"] == product].copy()
+        daily = pdf.groupby(["Date", "Day", "Month", "Year", "DayOfWeek", "WeekOfYear"])["Sales"].sum().reset_index()
+        X = daily[features]
+        y = daily["Sales"]
+        model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+        model.fit(X, y)
+        models[product] = model
+    return models
 
-def predict_and_plot(model, X_test, y_test):
-    preds = model.predict(X_test)
-    plt.figure(figsize=(10, 5))
-    plt.plot(y_test.values, label="Actual")
-    plt.plot(preds, label="Predicted")
-    plt.legend()
-    plt.title("Sales Prediction")
-    import os
-    os.makedirs("outputs", exist_ok=True)
-    plt.savefig("outputs/prediction_graph.png")
-    return preds
+def predict_future(model, product, start_date, days):
+    future_dates = pd.date_range(start=start_date, periods=days)
+    future_df = pd.DataFrame({
+        "Date": future_dates,
+        "Day": future_dates.day,
+        "Month": future_dates.month,
+        "Year": future_dates.year,
+        "DayOfWeek": future_dates.dayofweek,
+        "WeekOfYear": future_dates.isocalendar().week.astype(int).values
+    })
+    features = ["Day", "Month", "Year", "DayOfWeek", "WeekOfYear"]
+    future_df["Predicted Sales"] = model.predict(future_df[features])
+    future_df["Predicted Sales"] = future_df["Predicted Sales"].clip(lower=0)
+    return future_df

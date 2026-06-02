@@ -238,5 +238,5 @@ if show("💡 Insights & Recommendations"):
         f"${all_preds[product]:.2f}/day over the next {future_days} days"
     )
 
-if not selected_outputs:
+if not selected_output:
     st.info("👈 Please select at least one output from the sidebar to display.")

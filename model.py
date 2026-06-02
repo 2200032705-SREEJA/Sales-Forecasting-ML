@@ -15,23 +15,24 @@ def load_data(path):
     return df
 
 @st.cache_resource
-def train_model_cached(path):
+def train_single_model(product, path="data/SuperMarket_Analysis.csv"):
+    """Train model for ONE product line only — cached per product."""
     df = load_data(path)
-    models = {}
     features = ["Day", "Month", "Year", "DayOfWeek", "WeekOfYear"]
-    for product in df["Product line"].unique():
-        pdf = df[df["Product line"] == product].copy()
-        daily = pdf.groupby(["Date", "Day", "Month", "Year", "DayOfWeek", "WeekOfYear"])["Sales"].sum().reset_index()
-        X = daily[features]
-        y = daily["Sales"]
-        model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
-        model.fit(X, y)
-        models[product] = model
-    return models
+    pdf = df[df["Product line"] == product].copy()
+    daily = pdf.groupby(["Date", "Day", "Month", "Year", "DayOfWeek", "WeekOfYear"])["Sales"].sum().reset_index()
+    X = daily[features]
+    y = daily["Sales"]
+    model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+    model.fit(X, y)
+    return model
 
-# Keep original name so app.py works without changes
 def train_model(df):
-    return train_model_cached("data/SuperMarket_Analysis.csv")
+    """Kept for compatibility — returns a lazy dict that trains on demand."""
+    class LazyModels:
+        def __getitem__(self, product):
+            return train_single_model(product)
+    return LazyModels()
 
 def predict_future(model, product, start_date, days):
     future_dates = pd.date_range(start=start_date, periods=days)
